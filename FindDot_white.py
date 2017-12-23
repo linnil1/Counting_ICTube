@@ -50,7 +50,7 @@ plt.imshow(border_remove)
 
 # binarize
 blur = cv2.GaussianBlur(border_remove, (15,15), 0)
-remove_small = cv2.morphologyEx(blur, cv2.MORPH_OPEN, diskCreate(7))
+remove_small = cv2.morphologyEx(blur, cv2.MORPH_OPEN, diskCreate(9))
 tar_gray = cv2.equalizeHist(remove_small)
 # ret, thresh = cv2.threshold(sub, 0, 255, cv2.THRESH_OTSU)
 ret, thresh = cv2.threshold(tar_gray, 243, 255, cv2.THRESH_BINARY)
@@ -76,7 +76,7 @@ for i in range(1, ret):
         else:
             markers[ind] = 0
 
-# convolution
+# IOU
 fl_bg = np.array(target, dtype=np.float)
 ss = []
 for i, ind in filt:
@@ -92,16 +92,13 @@ for i, ind in filt:
     s = np.sum(test_ostu == 255) / len(ind[0])
     print(i)
     print(s)
-    if 0 < s < 3:
+    if 0.5 < s < 2.5:
         cv2.rectangle(img, (sy,sx), (ey,ex), (0,255,0), 2)
     ss.append(s)
-
 plt.subplot(235)
 plt.hist(ss)
 
 plt.subplot(236)
 plt.imshow(img)
 
-
 plt.show()
-sys.exit()
