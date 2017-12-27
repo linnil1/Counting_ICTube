@@ -58,7 +58,7 @@ def mainProcess(img, showOne=False):
     upper_blue = np.array([130,200,200])
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
     # target condition
-    green_target = cv2.inRange(hsv, np.array([77,180,10]), np.array([97,255,250])) | \
+    green_target = cv2.inRange(hsv, np.array([77,180,10 ]), np.array([97,255,250])) | \
                    cv2.inRange(hsv, np.array([77,120,110]), np.array([97,230,250]))
     mask = mask | green_target 
 
