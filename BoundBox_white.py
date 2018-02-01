@@ -92,7 +92,7 @@ def addXML(xmin, ymin, xmax, ymax):
     </object>
     """
     root = etree.Element("object")
-    root.append(newEle("name", "green"))
+    root.append(newEle("name", "white"))
     root.append(newEle("pose", "Unspecified"))
     root.append(newEle("truncated", "0"))
     root.append(newEle("difficult", "0"))
@@ -107,8 +107,8 @@ def addXML(xmin, ymin, xmax, ymax):
 # [0,4,5,8,10,16]
 # [6,15]
 # for name in [6,15]: #[0,4,5,8,10,16]:
-name = 5
-ori_img = cv2.imread("RectImage/{:03}.jpg".format(name))
+name = 18
+ori_img = cv2.imread("Test1/{:03}.jpg".format(name))
 xml = createXML(name, ori_img)
 img = imgReshape(ori_img)
 blur = cv2.GaussianBlur(img, (15,15), 0)
@@ -123,21 +123,21 @@ upper_blue = np.array([130,255,255])
 mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
 
 # Background removing
-mask_blue_di = cv2.dilate(mask_blue, diskCreate(101)) # be fatter
+mask_blue_di = cv2.dilate(mask_blue, diskCreate(31)) # be fatter
 mask_blue_contour = maxContourFind(mask_blue_di)
 mask_blue_hull = cv2.convexHull(mask_blue_contour)
 extract_hsv = np.dstack([contourMask(hsv[:,:,0], mask_blue_hull),
                          contourMask(hsv[:,:,1], mask_blue_hull),
                          contourMask(hsv[:,:,2], mask_blue_hull)])
 
-# Green Target
-lower_green = np.array([75,100,50])
-upper_green = np.array([95,255,255])
-extract_target = cv2.inRange(extract_hsv, lower_green, upper_green)
+# White Target
+lower_white = np.array([0,0,200])
+upper_white = np.array([180,255,255])
+extract_target = cv2.inRange(extract_hsv, lower_white, upper_white)
 
 # one by one watershed
 num_marker, markers = cv2.connectedComponents(extract_target)
-oldmarkers =markers.copy()
+oldmarkers = markers.copy()
 num = 0
 
 for i in range(1, num_marker):
@@ -178,10 +178,10 @@ for i in range(1, num_marker):
         miny = np.min(c[:,0,1]) - mm
         maxy = np.max(c[:,0,1]) + mm
         cv2.rectangle(img, (minx,miny), (maxx,maxy), (0,255,0), 2)
-        minx = int(minx * ori_img.shape[1] / img.shape[0])
-        maxx = int(maxx * ori_img.shape[1] / img.shape[0])
-        miny = int(miny * ori_img.shape[0] / img.shape[1])
-        maxy = int(maxy * ori_img.shape[0] / img.shape[1])
+        minx = int(minx * ori_img.shape[1] / img.shape[1])
+        maxx = int(maxx * ori_img.shape[1] / img.shape[1])
+        miny = int(miny * ori_img.shape[0] / img.shape[0])
+        maxy = int(maxy * ori_img.shape[0] / img.shape[0])
         xml.append(addXML(minx, miny, maxx, maxy))
         # if rotate
         # flip img.shape for above 4 lines
