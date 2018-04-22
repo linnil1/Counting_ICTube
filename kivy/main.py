@@ -12,9 +12,9 @@ from kivy.config import Config
 from kivy.lang.builder import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen 
 Config.set('kivy', 'log_level', 'debug')
+Config.write()
 Config.set('graphics', 'width', '600')
 Config.set('graphics', 'height', '800')
-Config.write()
 
 def imageProcess(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -23,17 +23,16 @@ def imageProcess(img):
 class KivyCamera(Image):
     def __init__(self, **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
-        # self.capture = cv2.VideoCapture(1)
-        self.fps = 1
+        # self.capture = cv2.VideoCapture(0)
+        self.fps = 30
         self.event = None
         self.img = None
 
     def update(self, dt):
         print("update")
-        frame = cv2.imread("Bubbles.jpg")
-        self.img = frame
         # ret, frame = self.capture.read()
-        ret = True
+        ret, frame = True, cv2.imread("Bubbles.jpg")
+        self.img = frame
         if ret:
             self.toTexture(frame)
 
@@ -56,24 +55,22 @@ class KivyCamera(Image):
         # self.capture.release()
 
 class Menu(Screen):
-    number = NumericProperty(20)
+    number = NumericProperty(0)
 
 class Count(Screen):
-    number = NumericProperty(20)
+    number = NumericProperty(0)
     tmpnum = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(Count, self).__init__(**kwargs)
         self.camera = self.ids.camera
-        print(self.camera)
 
     def goCount(self, btn):
-        print(btn)
-        if btn.text != 'OK?':
-            btn.text = "OK?"
+        if btn.text == 'Count It':
             self.camera.stop()
             img, self.tmpnum = imageProcess(self.camera.img)
             self.camera.toTexture(img)
+            btn.text = str(self.tmpnum) + " OK?"
         else:
             btn.text = "Count It"
             self.camera.start()
@@ -83,6 +80,13 @@ class Count(Screen):
         self.manager.current = 'Menu';
         self.manager.get_screen('Menu').number = self.number
         # share same var by hacking
+
+    def enter(self):
+        self.camera.start()
+        self.ids.id_count.text = "Count It"
+
+    def leave(self):
+        self.camera.stop()
 
 
 class MyApp(App):
@@ -98,8 +102,8 @@ class MyApp(App):
 
 Builder.load_string("""
 <Count>:
-    on_enter: root.camera.start()
-    on_leave: root.camera.stop()
+    on_enter: root.enter()
+    on_leave: root.leave()
     BoxLayout:
         size: root.size
         orientation: 'vertical'
@@ -109,6 +113,7 @@ Builder.load_string("""
         BoxLayout:
             size_hint: 1, .3
             Button:
+                id: id_count
                 size_hint: .4, 1
                 on_press: root.goCount(self)
                 text: 'Count It'
@@ -116,9 +121,12 @@ Builder.load_string("""
                 size_hint: .4, 1
                 on_press: root.goMenu()
                 text: 'Menu'
-            Label:
+            BoxLayout:
+                id: num
                 size_hint: .2, 1
-                text: str(root.number)
+                orientation: 'vertical'
+                Label:
+                    text: str(root.number)
 <Menu>:
     BoxLayout:
         size: root.size
