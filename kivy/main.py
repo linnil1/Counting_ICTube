@@ -37,36 +37,67 @@ def imageProcess(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     return hsv, 12
 
+def rotate(img):
+    (h, w) = img.shape[:2]
+    a = min(h, w)
+    center = (a / 2, a / 2)
+    M = cv2.getRotationMatrix2D(center, -90, 1)
+    return cv2.warpAffine(img, M, (h, w))
+
 class MyCamera(Camera):
     def __init__(self, **kwargs):
         super(MyCamera, self).__init__(**kwargs)
+        self.mysize = (640, 480)
+        self.tmpimg = None
 
     def _camera_loaded(self, *largs):
+        psize = self.parent.size
+        self.mysize = (psize[0], int(psize[1] * 0.7))
         if kivy.platform == 'android':
-            self.texture = Texture.create(size=self.resolution, colorfmt='rgb')
+            self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
         else:
-            self.texture = self._camera.texture
+            self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
 
-    def on_tex(self, *l):
+    def getFrame(self):
         if kivy.platform == 'android':
             buf = self._camera.grab_frame()
             if buf is None:
-                return
+                return None
             frame = self._camera.decode_frame(buf)
+            frame = cv2.flip(rotate(frame), 0)
         else:
             ret, frame = self._camera._device.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # frame = rotate(frame) # debug
+
         if frame is None:
-            print("No")
+            return None
+        return frame
+
+    def on_tex(self, *l):
+        frame = self.getFrame()
+        if frame is None:
+            return
 
         self.process_frame(frame)
         super(MyCamera, self).on_tex(*l)
 
     def process_frame(self, frame):
         print(frame.shape)
+        print(self.mysize)
+        frame = cv2.resize(frame, self.mysize)
         buf = frame.tostring()
         self.texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
+    def saveTo(self, path):
+        frame = self.getFrame()
+        self.tmpimg = frame.copy()
+        if frame is None:
+            return None
+        cv2.imwrite(path, frame)
+        return self.tmpimg
 
 class Menu(Screen):
     number = NumericProperty(0)
@@ -82,10 +113,10 @@ class Count(Screen):
 
     def goCount(self, btn):
         if btn.text == 'Count It':
+            img  = self.camera.saveTo(imagePath)
             self.camera.play = False
-            self.camera.export_to_png(imagePath)
-            img = cv2.imread(imagePath)
-            img = cv2.resize(img, (640, 480))
+            if img is None:
+                print("Error")
             img, self.tmpnum = imageProcess(img)
             self.camera.process_frame(img)
             btn.text = str(self.tmpnum) + " OK?"
