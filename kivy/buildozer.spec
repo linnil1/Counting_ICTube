@@ -16,7 +16,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) List of inclusions using pattern matching
-#source.include_patterns = assets/*,images/*.png
+# source.include_patterns = assets/*,images/*.jpg
 
 # (list) Source files to exclude (let empty to not exclude anything)
 #source.exclude_exts = spec
@@ -36,7 +36,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
-requirements = kivy, numpy, opencv
+requirements = kivy, numpy, opencv, jnius
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -86,18 +86,19 @@ fullscreen = 0
 
 # (list) Permissions
 #android.permissions = INTERNET
+android.permissions = CAMERA
 
 # (int) Android API to use
-#android.api = 19
+android.api = 23
 
 # (int) Minimum API required
-#android.minapi = 9
+android.minapi = 23
 
 # (int) Android SDK version to use
-#android.sdk = 20
+android.sdk = 23
 
 # (str) Android NDK version to use
-#android.ndk = 9c
+android.ndk = 12b
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 #android.private_storage = True
@@ -196,8 +197,7 @@ android.arch = armeabi-v7a
 #
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
-# p4a.source_dir = /home/ubuntu/kivy/python-for-android
-p4a.source_dir = /home/linnil1/android/python-for-android
+p4a.source_dir = /home/ubuntu/python-for-android
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
 #p4a.local_recipes =
