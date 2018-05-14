@@ -46,6 +46,24 @@ def rotate(img):
 
 class MyCamera(Camera):
     def __init__(self, **kwargs):
+        # get resolution lists
+        Camera = autoclass('android.hardware.Camera')
+        _android_camera = Camera.open(0)
+        params = _android_camera.getParameters()
+        a = params.getSupportedPictureSizes().toArray()
+        sp_size = [(i.width, i.height) for i in a]
+        sp_size = sorted(sp_size)
+        print(sp_size)
+        if (1920, 1080) in sp_size:
+            ok_size = (1920, 1080)
+        else:
+            ok_size = sp_size[0]
+        width, height = ok_size
+        _android_camera.release()
+        kwargs['resolution'] = ok_size
+        kwargs['index'] = 0
+
+        # init
         super(MyCamera, self).__init__(**kwargs)
         self.mysize = (640, 480)
         self.tmpimg = None
@@ -56,6 +74,12 @@ class MyCamera(Camera):
         if kivy.platform == 'android':
             self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
+
+            # change fps
+            self._camera._fps = 15
+            params = self._camera._android_camera.getParameters()
+            params.setPreviewFpsRange(15000, 15000)
+            self._camera._android_camera.setParameters(params)
         else:
             self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
@@ -69,9 +93,9 @@ class MyCamera(Camera):
             frame = cv2.flip(rotate(frame), 0)
         else:
             ret, frame = self._camera._device.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             # frame = rotate(frame) # debug
 
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         if frame is None:
             return None
         return frame
@@ -86,7 +110,6 @@ class MyCamera(Camera):
 
     def process_frame(self, frame):
         print(frame.shape)
-        print(self.mysize)
         frame = cv2.resize(frame, self.mysize)
         buf = frame.tostring()
         self.texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
@@ -159,8 +182,6 @@ Builder.load_string("""
         orientation: 'vertical'
         MyCamera:
             id: camera
-            index: 0
-            resolution: (640, 480)
             size_hint: 1, .7
         BoxLayout:
             size_hint: 1, .3
