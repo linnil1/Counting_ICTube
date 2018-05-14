@@ -18,10 +18,10 @@ Config.set('kivy', 'log_level', 'debug')
 #Config.set('graphics', 'width', '600')
 #Config.set('graphics', 'height', '800')
 
-# Get path to SD card Android
 try:
     from jnius import autoclass  # SDcard Android
     import os
+    # Get path to SD card Android
     Environment = autoclass('android.os.Environment')
     sdpath = Environment.getExternalStorageDirectory().getAbsolutePath()
     print("SD card")
@@ -29,6 +29,17 @@ try:
     imagePath = os.path.join(sdpath, 'test.png')
     print("Image Path")
     print(imagePath)
+
+    # get camera resolution lists
+    sp_size = [[1920, 1080]]
+    HardWareCamera = autoclass('android.hardware.Camera')
+    _android_camera = HardWareCamera.open(0)
+    params = _android_camera.getParameters()
+    a = params.getSupportedPictureSizes().toArray()
+    _android_camera.release()
+    sp_size = [(i.width, i.height) for i in a]
+    sp_size = sorted(sp_size)
+    print(sp_size)
 # Not on Android
 except:
     imagePath = './test.png'
@@ -46,31 +57,28 @@ def rotate(img):
 
 class MyCamera(Camera):
     def __init__(self, **kwargs):
-        # get resolution lists
-        Camera = autoclass('android.hardware.Camera')
-        _android_camera = Camera.open(0)
-        params = _android_camera.getParameters()
-        a = params.getSupportedPictureSizes().toArray()
-        sp_size = [(i.width, i.height) for i in a]
-        sp_size = sorted(sp_size)
-        print(sp_size)
-        if (1920, 1080) in sp_size:
-            ok_size = (1920, 1080)
+        if kivy.platform == 'android':
+            # get resolution lists
+            if (1920, 1080) in sp_size:
+                ok_size = (1920, 1080)
+            else:
+                ok_size = sp_size[0]
+            width, height = ok_size
+            kwargs['resolution'] = ok_size
         else:
-            ok_size = sp_size[0]
-        width, height = ok_size
-        _android_camera.release()
-        kwargs['resolution'] = ok_size
-        kwargs['index'] = 0
+            kwargs['resolution'] = (1920, 1080)
 
         # init
+        kwargs['index'] = 0
         super(MyCamera, self).__init__(**kwargs)
         self.mysize = (640, 480)
         self.tmpimg = None
+        self.play = False
+        self.myplay = False
 
     def _camera_loaded(self, *largs):
         psize = self.parent.size
-        self.mysize = (psize[0], int(psize[1] * 0.7))
+        self.mysize = (psize[0], psize[1] - 150)
         if kivy.platform == 'android':
             self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
@@ -80,6 +88,7 @@ class MyCamera(Camera):
             params = self._camera._android_camera.getParameters()
             params.setPreviewFpsRange(15000, 15000)
             self._camera._android_camera.setParameters(params)
+            self._camera._android_camera.setDisplayOrientation(90)
         else:
             self.texture = Texture.create(size=self.mysize, colorfmt='rgb')
             self.texture_size = list(self.texture.size)
@@ -90,10 +99,10 @@ class MyCamera(Camera):
             if buf is None:
                 return None
             frame = self._camera.decode_frame(buf)
+            # frame = cv2.flip(frame, 0)
             frame = cv2.flip(rotate(frame), 0)
         else:
             ret, frame = self._camera._device.read()
-            # frame = rotate(frame) # debug
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         if frame is None:
@@ -101,6 +110,8 @@ class MyCamera(Camera):
         return frame
 
     def on_tex(self, *l):
+        if not self.myplay:
+            return
         frame = self.getFrame()
         if frame is None:
             return
@@ -132,12 +143,11 @@ class Count(Screen):
     def __init__(self, **kwargs):
         super(Count, self).__init__(**kwargs)
         self.camera = self.ids.camera
-        self.camera.play = False
 
     def goCount(self, btn):
         if btn.text == 'Count It':
             img  = self.camera.saveTo(imagePath)
-            self.camera.play = False
+            self.camera.myplay = False
             if img is None:
                 print("Error")
             img, self.tmpnum = imageProcess(img)
@@ -146,7 +156,7 @@ class Count(Screen):
         else:
             btn.text = "Count It"
             self.number = self.number + self.tmpnum
-            self.camera.play = True
+            self.camera.myplay = True
 
     def goMenu(self):
         self.manager.current = 'Menu';
@@ -154,13 +164,12 @@ class Count(Screen):
         # share same var by hacking
 
     def enter(self):
-        # self.camera.play()
-        self.camera.play = True
         self.ids.id_count.text = "Count It"
+        self.camera.play = True
+        self.camera.myplay = True
 
     def leave(self):
-        self.camera.play = False
-
+        self.camera.myplay = False
 
 class MyApp(App):
     def build(self):
@@ -182,9 +191,9 @@ Builder.load_string("""
         orientation: 'vertical'
         MyCamera:
             id: camera
-            size_hint: 1, .7
         BoxLayout:
-            size_hint: 1, .3
+            height: '150px'
+            size_hint_y: None
             Button:
                 id: id_count
                 size_hint: .4, 1
